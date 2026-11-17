@@ -1,4 +1,4 @@
-<#
+﻿<#
   install.ps1 — Bootstrap 1 LỆNH cho ZCRM Community trên WINDOWS (PowerShell, không cần WSL thủ công).
 
   Tự động: kiểm tra Docker Desktop + Git → cài qua winget nếu thiếu → TẢI mã nguồn (clone)
