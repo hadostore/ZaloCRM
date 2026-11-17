@@ -78,7 +78,7 @@ async function runCronCycle(io: Server | null): Promise<void> {
   // syncAccountFully tự bọc withTenant(acc.orgId) bên trong.
   const accounts = await runSystemQuery(() =>
     prisma.zaloAccount.findMany({
-      where: { status: 'connected' },
+      where: { status: 'connected', channel: 'personal' }, // nick Zalo OA không có SDK cá nhân
       select: { id: true, orgId: true, displayName: true },
     }),
   );

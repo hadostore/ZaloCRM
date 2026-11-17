@@ -162,6 +162,8 @@ const routes: RouteRecordRaw[] = [
       // Facebook Lead Ads route → extension bundle (eeSettingsChildren).
       { path: 'channels/rate-limit',       name: 'Settings.RateLimit',       component: () => import('@/views/settings/SettingsComingSoon.vue'), props: { feature: 'rate-limit' }, meta: { resource: 'settings' } },
       // Automation tech-settings route → extension bundle (eeSettingsChildren).
+      // 2026-11-17 — Zalo OA (API chính thức): kết nối OA, ZNS, thống kê
+      { path: 'channels/zalo-oa',          name: 'Settings.ZaloOa',          component: () => import('@/views/settings/ZaloOaSettingsPage.vue'), meta: { resource: 'settings' } },
       { path: 'channels/integrations',     name: 'Settings.Integrations',    component: () => import('@/views/IntegrationsView.vue'), meta: { resource: 'settings' } },
 
       // 🛠 Dev & API

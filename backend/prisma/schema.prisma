@@ -378,6 +378,12 @@ model ZaloAccount {
   // T13 (2026-06-21): user.id người bấm XÓA nick (null = hệ thống tự dọn thẻ ma / xóa trước khi
   // có field này). Tab "Nick đã xóa" resolve tên qua User. KHÔNG FK (giữ nhẹ, xóa user ko cascade).
   archivedById    String?   @map("archived_by_id")
+  // 2026-11-17 — Zalo OA (API chính thức). channel='personal' = nick cá nhân (zca-js, QR);
+  // channel='oa' = "nick đại diện" cho 1 Zalo Official Account → hội thoại OA hiện chung hộp
+  // chat. Nick OA KHÔNG có sessionData nên health-check/boot reconnect tự bỏ qua; gửi tin
+  // đi qua OA OpenAPI (modules/zalo-oa) thay vì zaloPool.
+  channel         String    @default("personal")
+  oaConnectionId  String?   @unique @map("oa_connection_id")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   org                Organization          @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -3787,6 +3793,12 @@ model ZaloOaAppConfig {
   appId            String?  @map("app_id")
   appSecretEnc     String?  @map("app_secret_enc") @db.Text // encryptToken(appSecret)
   oauthRedirectUri String?  @map("oauth_redirect_uri")
+  // 2026-11-17 — Zalo OA chat/ZNS (Community, modules/zalo-oa)
+  oaSecretKeyEnc   String?   @map("oa_secret_key_enc") @db.Text // "OA Secret Key" trang Webhook — ký X-ZEvent-Signature
+  domainVerifyCode String?   @map("domain_verify_code") // mã file zalo_verifier<code>.html (xác thực domain)
+  oauthState       String?   @unique @map("oauth_state") // state OAuth đang chờ callback
+  oauthCodeVerifier String?  @map("oauth_code_verifier") // PKCE verifier đang chờ callback
+  oauthStartedAt   DateTime? @map("oauth_started_at")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -3838,6 +3850,10 @@ model ZaloOaConnection {
   tokenExpiresAt  DateTime? @map("token_expires_at")
   status          String    @default("connected") // connected | revoked | error
   lastError       String?   @map("last_error")
+  // 2026-11-17 — Zalo OA chat/ZNS
+  oaAvatarUrl      String?   @map("oa_avatar_url")
+  lastWebhookAt    DateTime? @map("last_webhook_at")
+  followersSyncedAt DateTime? @map("followers_synced_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -3882,6 +3898,31 @@ model ZaloLeadEvent {
   @@index([orgId, formId])
   @@index([createdAt])
   @@map("zalo_lead_events")
+}
+
+// 2026-11-17 — Nhật ký tin ZNS (Zalo Notification Service) gửi qua OA: xác nhận đơn,
+// nhắc lịch, chăm sóc sau mua… Dùng đo lường (đã gửi / lỗi / khách đã nhận).
+model ZaloZnsLog {
+  id             String    @id @default(cuid())
+  orgId          String    @map("org_id")
+  oaConnectionId String    @map("oa_connection_id")
+  contactId      String?   @map("contact_id")
+  phone          String
+  templateId     String    @map("template_id")
+  templateData   Json      @default("{}") @map("template_data")
+  trackingId     String    @map("tracking_id")
+  znsMsgId       String?   @map("zns_msg_id")
+  status         String    @default("pending") // pending | sent | failed | delivered
+  error          String?
+  sentByUserId   String?   @map("sent_by_user_id")
+  sentAt         DateTime? @map("sent_at")
+  deliveredAt    DateTime? @map("delivered_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@unique([orgId, trackingId])
+  @@index([orgId, createdAt])
+  @@index([znsMsgId])
+  @@map("zalo_zns_logs")
 }
 
 // ════════════════════════════════════════════════════════════════════════════
