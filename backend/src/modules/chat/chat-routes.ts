@@ -36,6 +36,7 @@ import { buildSendFileName } from '../media/media-routes.js';
 import { bumpUsage } from '../media/media-service.js';
 import { getOwnerScope } from '../rbac/owner-scope.js';
 import { blockVisibilityWhere } from '../../shared/ee-registry/automation.js';
+import { isOaNick, sendOaMessageFromCrm, explainOaSendError } from '../zalo-oa/oa-inbox-service.js';
 
 type QueryParams = Record<string, string>;
 
@@ -1608,6 +1609,31 @@ export async function chatRoutes(app: FastifyInstance) {
       }
     }
     // ── END M53 Virtual gate ───────────────────────────────────────────────
+
+    // ── 2026-11-17 Zalo OA gate: hội thoại thuộc "nick đại diện" OA → gửi tin tư vấn qua
+    // OA OpenAPI (không qua zca-js). Chống gửi trùng bằng echoId như nhánh thường.
+    if (isOaNick(conversation.zaloAccount)) {
+      if (echoId) {
+        const existing = await prisma.message.findUnique({
+          where: { conversationId_clientEchoId: { conversationId: id, clientEchoId: echoId } },
+          include: { repliedBy: { select: { id: true, fullName: true, email: true } } },
+        });
+        if (existing) return { ...existing, zaloMsgIdNum: existing.zaloMsgIdNum?.toString() ?? null, echoId };
+      }
+      try {
+        return await sendOaMessageFromCrm({
+          conversation,
+          nick: conversation.zaloAccount,
+          content,
+          userId: user.id,
+          userName: userFullName,
+          echoId,
+        });
+      } catch (err) {
+        logger.warn(`[chat] gửi qua Zalo OA lỗi: ${(err as Error).message}`);
+        return reply.status(400).send({ error: explainOaSendError(err), code: 'ZALO_OA_SEND_FAILED' });
+      }
+    }
 
     const instance = zaloPool.getInstance(conversation.zaloAccountId);
     if (!instance?.api) return reply.status(400).send({ error: 'Zalo account not connected' });

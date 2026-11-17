@@ -79,7 +79,7 @@ async function runCronCycle(): Promise<void> {
   // Cross-org sweep mọi nick connected → runSystemQuery. Per-account bọc withTenant.
   const accounts = await runSystemQuery(() =>
     prisma.zaloAccount.findMany({
-      where: { status: 'connected' },
+      where: { status: 'connected', channel: 'personal' }, // nick Zalo OA không có SDK cá nhân
       select: { id: true, orgId: true, displayName: true },
     }),
   );

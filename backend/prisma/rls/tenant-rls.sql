@@ -580,3 +580,12 @@ DROP POLICY IF EXISTS tenant_isolation ON "zalo_lead_events";
 CREATE POLICY tenant_isolation ON "zalo_lead_events"
   USING ("org_id" = current_setting('app.current_org', true) OR current_setting('app.bypass_rls', true) = 'on')
   WITH CHECK ("org_id" = current_setting('app.current_org', true) OR current_setting('app.bypass_rls', true) = 'on');
+
+-- ── Zalo OA chat/ZNS (Community, thêm 2026-11-17) ──────────────────────────
+-- zalo_zns_logs
+ALTER TABLE "zalo_zns_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "zalo_zns_logs" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "zalo_zns_logs";
+CREATE POLICY tenant_isolation ON "zalo_zns_logs"
+  USING ("org_id" = current_setting('app.current_org', true) OR current_setting('app.bypass_rls', true) = 'on')
+  WITH CHECK ("org_id" = current_setting('app.current_org', true) OR current_setting('app.bypass_rls', true) = 'on');

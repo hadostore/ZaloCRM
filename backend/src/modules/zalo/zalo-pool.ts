@@ -79,6 +79,8 @@ function defaultReason(status: ZaloStatus): StatusReason {
 
 class ZaloAccountPool {
   private instances = new Map<string, ZaloInstance>();
+  /** Trạng thái kênh ngoài pool (nick đại diện Zalo OA) — xem setExternalStatus(). */
+  private externalStatuses = new Map<string, string>();
   private io: Server | null = null;
   // Shared user-info cache passed into each listener context
   private userInfoCache = new Map<string, UserInfoCacheEntry>();
@@ -781,13 +783,27 @@ class ZaloAccountPool {
   }
 
   getStatus(accountId: string): string {
-    return this.instances.get(accountId)?.status ?? 'disconnected';
+    const inst = this.instances.get(accountId);
+    if (inst) return inst.status;
+    // Nick đại diện Zalo OA (API chính thức) không chạy listener zca-js — trạng thái do
+    // module zalo-oa báo qua setExternalStatus().
+    return this.externalStatuses.get(accountId) ?? 'disconnected';
   }
 
   getAllStatuses(): Record<string, string> {
     const statuses: Record<string, string> = {};
+    for (const [id, st] of this.externalStatuses) statuses[id] = st;
     for (const [id, inst] of this.instances) statuses[id] = inst.status;
     return statuses;
+  }
+
+  /**
+   * 2026-11-17 — Zalo OA: kênh ngoài pool (OA OpenAPI) tự báo trạng thái để UI/status-log
+   * hiển thị đúng ("connected" khi token OA còn hạn). status=null → gỡ khỏi danh sách.
+   */
+  setExternalStatus(accountId: string, status: 'connected' | 'disconnected' | null): void {
+    if (status === null) this.externalStatuses.delete(accountId);
+    else this.externalStatuses.set(accountId, status);
   }
 
   // Return raw API instance for direct SDK calls (e.g. public API send message)

@@ -115,6 +115,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       // 2026-06-18 — Trần SDK dời từ trang Zalo sang đây (gate resource 'settings', KHÔNG 'zalo_account')
       // → sale quản nick không thấy/không đổi được trần (trần SDK nguy hiểm).
       { id: 'sdk-limits', label: 'Trần an toàn SDK Zalo', icon: 'mdi-shield-alert-outline', route: '/settings/channels/sdk-limits', permission: 'admin', resource: 'settings', aliases: ['trần', 'rate limit', 'sdk', 'giới hạn', 'an toàn nick', 'khoá nick', 'quota nick', 'giới hạn gửi'] },
+      { id: 'zalo-oa', label: 'Zalo OA (API chính thức)', icon: 'mdi-message-badge-outline', route: '/settings/channels/zalo-oa', permission: 'admin', resource: 'settings', aliases: ['oa', 'official account', 'zalo business', 'zns', 'webhook zalo', 'người theo dõi'] },
       // Facebook Lead Ads item → extension bundle (eeSettingsItems.channels).
       // Automation tech-settings nav item → extension bundle (eeSettingsItems.channels).
       { id: 'integrations', label: 'Tích hợp 3rd party', icon: 'mdi-puzzle-outline', route: '/settings/channels/integrations', permission: 'admin', resource: 'settings', aliases: ['tích hợp', 'integration', '3rd party'] },

@@ -92,6 +92,10 @@ import { telegramBridgeRoutes } from './modules/integrations/providers/telegram-
 import { aiRoutes } from './modules/ai/ai-routes.js';
 import { chatOperationsRoutes, registerChatSocketHandlers } from './modules/chat/chat-operations-routes.js';
 import { groupRoutes } from './modules/zalo/group-routes.js';
+import { zaloOaRoutes } from './modules/zalo-oa/zalo-oa-routes.js';
+import { zaloOaPublicRoutes } from './modules/zalo-oa/zalo-oa-public-routes.js';
+import { setZaloOaIO } from './modules/zalo-oa/oa-inbox-service.js';
+import { startZaloOaTokenCron } from './modules/zalo-oa/oa-token-service.js';
 import { groupScanRoutes } from './modules/zalo/group-scan-routes.js';
 import { startGroupScanWorker, stopGroupScanWorker } from './modules/zalo/group-scan-queue.js';
 import { groupModerationRoutes } from './modules/zalo/group-moderation-routes.js';
@@ -229,6 +233,7 @@ async function bootstrap() {
 
   // Pass io to zalo pool for real-time event emission
   zaloPool.setIO(io);
+  setZaloOaIO(io);
 
   // Phase 1b 2026-06-07 — Socket.IO auth PHẢI đăng ký TRƯỚC mọi handler:
   // io.use() verify JWT + auto-join org room từ token (vá P0 IDOR cross-tenant WS).
@@ -328,6 +333,9 @@ async function bootstrap() {
   await app.register(aiRoutes);
   await app.register(chatOperationsRoutes);
   await app.register(groupRoutes);
+  // 2026-11-17 — Zalo OA (API chính thức): chat qua hộp thư CRM + ZNS + đồng bộ follower
+  await app.register(zaloOaRoutes);
+  await app.register(zaloOaPublicRoutes);
   await app.register(groupScanRoutes); // E1 Quét group (🟢 Community)
   await app.register(customerListRoutes); // Tệp khách hàng (🟢 Community)
   await app.register(customerListEntryRoutes);
@@ -381,6 +389,7 @@ async function bootstrap() {
     logger.info(`Environment: ${config.nodeEnv}`);
     startAppointmentReminder(io);
     startZaloHealthCheck();
+    startZaloOaTokenCron(); // Zalo OA: báo trạng thái nick OA + tự làm mới token
     startContactIntelligence();
     startLabelsBackgroundSync(60_000); // realtime-ish 2-way pull every 60s
     // E1 Quét group (🟢 Community) — BullMQ worker xử lý group-scan job.

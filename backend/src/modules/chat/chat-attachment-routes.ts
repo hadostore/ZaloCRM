@@ -88,6 +88,14 @@ export async function chatAttachmentRoutes(app: FastifyInstance) {
       // Fix 2026-06-03 — optimistic badge "Sale CRM · {tên}"
       const userFullName = await getUserFullName(user.id);
 
+      // 2026-11-17 — Zalo OA: bản đầu chỉ hỗ trợ gửi chữ trong CRM (ảnh/file gửi bằng app Zalo OA).
+      if (conversation.zaloAccount.channel === 'oa') {
+        return reply.status(400).send({
+          error: 'Hội thoại Zalo OA hiện chỉ gửi được tin chữ từ CRM. Ảnh/file vui lòng gửi bằng app Zalo OA (lịch sử vẫn tự lưu về CRM).',
+          code: 'ZALO_OA_ATTACHMENT_UNSUPPORTED',
+        });
+      }
+
       const instance = zaloPool.getInstance(conversation.zaloAccountId);
       if (!instance?.api) return reply.status(400).send({ error: 'Zalo account not connected' });
 
