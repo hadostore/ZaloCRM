@@ -28,6 +28,8 @@ import { getAiConfig, getProviderApiKey, generateText } from '../ai/ai-service.j
 import { getProviderBaseUrl } from '../ai/provider-registry.js';
 import { buildAgentSystemPrompt } from './ai-agent-prompt.js';
 import { computeReplyDelayMs, isWithinWorkHours, matchesHandoff, parseAgentOutput } from './ai-agent-rules.js';
+import { withAccessToken } from '../zalo-oa/oa-token-service.js';
+import { sendTextMessage as sendOaText } from '../zalo-oa/oa-api-client.js';
 
 export const AGENT_SENT_VIA = 'ai_agent';
 const CONTEXT_MESSAGES = 20;
@@ -130,7 +132,7 @@ async function doReply(orgId: string, conversationId: string): Promise<void> {
       isVirtual: true,
       deletedAt: true,
       contact: { select: { fullName: true, crmName: true } },
-      zaloAccount: { select: { status: true, zaloUid: true, privacyMode: true, ownerUserId: true, org: { select: { name: true } } } },
+      zaloAccount: { select: { status: true, zaloUid: true, privacyMode: true, ownerUserId: true, channel: true, oaConnectionId: true, org: { select: { name: true } } } },
     },
   });
   if (!conversation) return skip(conversationId, 'conversation not found');
@@ -246,7 +248,7 @@ async function sendAgentMessage(input: {
     id: string;
     zaloAccountId: string;
     externalThreadId: string | null;
-    zaloAccount: { zaloUid: string | null; privacyMode: string; ownerUserId: string };
+    zaloAccount: { zaloUid: string | null; privacyMode: string; ownerUserId: string; channel?: string | null; oaConnectionId?: string | null };
   };
   content: string;
   handoff: boolean;
@@ -254,10 +256,16 @@ async function sendAgentMessage(input: {
   const { orgId, conversation, content, handoff } = input;
   let zaloMsgId = '';
   try {
-    const result = (await zaloOps.sendMessage(conversation.zaloAccountId, conversation.externalThreadId!, 0, { msg: content })) as {
-      message?: { msgId?: number | string } | null;
-    };
-    zaloMsgId = String(result?.message?.msgId ?? '');
+    if (conversation.zaloAccount.channel === 'oa' && conversation.zaloAccount.oaConnectionId) {
+      // Nick đại diện Zalo OA → gửi tin tư vấn qua OA OpenAPI (không qua zca-js).
+      const oaConnId = conversation.zaloAccount.oaConnectionId;
+      zaloMsgId = await withAccessToken(oaConnId, (t) => sendOaText(t, conversation.externalThreadId!, content));
+    } else {
+      const result = (await zaloOps.sendMessage(conversation.zaloAccountId, conversation.externalThreadId!, 0, { msg: content })) as {
+        message?: { msgId?: number | string } | null;
+      };
+      zaloMsgId = String(result?.message?.msgId ?? '');
+    }
   } catch (err) {
     logger.warn(`[ai-agent] Zalo send failed conv=${conversation.id}: ${(err as Error)?.message}`);
     return;
